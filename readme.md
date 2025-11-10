@@ -14,6 +14,8 @@
 
 这是用于轻小说阅读器[LightNovelReader](https://github.com/dmzz-yyhyy/LightNovelReader)的一个插件模板
 
+LNR的插件不仅仅局限于数据源的编写, 您可以使用插件系统做几乎任何的事情。比如我们的Js数据源解析功能本质上就是一个插件。通过插件您可以自定义内容控件, 修改软件逻辑, 处理软件内数据, 通过文本后处理系统对几乎整个软件的文本进行处理, 又或者是添加其他编程语言的插件解析支持等等。这完全取决于您的想象力。对于您必须的api，您可以前往原仓库处提交issue, 我们会尽量满足api的开放需求。
+
 我们非常欢迎对于插件的开发, 您可以通过以下方式联系我们
 
 - 在 [**此处**](https://github.com/dmzz-yyhyy/LightNovelReader/issues/new/choose) 提交一个 Bug
