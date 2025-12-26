@@ -47,7 +47,8 @@ LNR的插件不仅仅局限于数据源的编写, 您可以使用插件系统做
     versionName = "0.0.1",
     author = "none",
     description = "a example plugin",
-    updateUrl = "http://example.org"
+    updateUrl = "http://example.org",
+    apiVersion = 1
 )
 class ExamplePlugin : LightNovelReaderPlugin {
     override fun onLoad() {
@@ -64,7 +65,8 @@ class ExamplePlugin : LightNovelReaderPlugin {
     versionName = "0.0.1",
     author = "none",
     description = "a example plugin",
-    updateUrl = "http://example.org"
+    updateUrl = "http://example.org",
+    apiVersion = 1
 )
 class ExamplePlugin(
   val userDataRepositoryApi: UserDataRepositoryApi,
