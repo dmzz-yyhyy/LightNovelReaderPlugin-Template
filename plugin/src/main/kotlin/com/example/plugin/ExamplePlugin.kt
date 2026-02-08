@@ -30,7 +30,7 @@ import io.nightfish.lightnovelreader.api.userdata.UserDataRepositoryApi
     author = "none",
     description = " a example plugin",
     updateUrl = "https://v6.gh-proxy.com/https://github.com/dmzz-yyhyy/LightNovelReader-PluginRepository/blob/main/data/com.example.plugin/",
-    apiVersion = 1
+    apiVersion = 2
 )
 class ExamplePlugin(
     val userDataRepositoryApi: UserDataRepositoryApi

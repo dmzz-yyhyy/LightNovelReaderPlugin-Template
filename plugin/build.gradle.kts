@@ -1,11 +1,9 @@
-import com.android.tools.r8.internal.aC
 import org.gradle.kotlin.dsl.withType
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.compose.compiler)
 }
 
@@ -37,11 +35,13 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    applicationVariants.all {
-        val variant = this
-        variant.outputs.all {
-            val outputImpl = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
-            val originalFileName = outputImpl.outputFileName
+}
+
+androidComponents {
+    onVariants { variant ->
+        variant.outputs.forEach {
+            val outputImpl = it as com.android.build.api.variant.impl.VariantOutputImpl
+            val originalFileName = outputImpl.outputFileName.get()
             val newFileName = originalFileName.replace(".apk", ".apk.lnrp")
             outputImpl.outputFileName = newFileName
         }

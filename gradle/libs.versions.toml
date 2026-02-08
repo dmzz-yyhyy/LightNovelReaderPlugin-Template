@@ -1,16 +1,16 @@
 [versions]
 desugar = "2.1.5"
-agp = "8.12.3"
-kotlin = "2.2.20"
+agp = "9.0.0"
+kotlin = "2.3.10"
 kotlinxCoroutinesCore = "1.10.2"
-lightnovelreader = "refactoring-SNAPSHOT"
-runtime = "1.9.2"
-jsoup = "1.21.2"
-navigationRuntimeKtx = "2.9.5"
-jetbrainsKotlinJvm = "2.2.20"
-foundationLayout = "1.9.2"
+runtime = "1.10.2"
+jsoup = "1.22.1"
+navigationRuntimeKtx = "2.9.7"
+jetbrainsKotlinJvm = "2.3.10"
+foundationLayout = "1.10.2"
 composeBom = "2025.09.01"
 composeMaterial3 = "1.4.0"
+lightnovelreader = "refactoring-SNAPSHOT"
 
 [libraries]
 desugar_jdk_libs = { module = "com.android.tools:desugar_jdk_libs", version.ref = "desugar" }
