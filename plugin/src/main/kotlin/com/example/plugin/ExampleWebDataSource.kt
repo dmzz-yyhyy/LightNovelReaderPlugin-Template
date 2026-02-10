@@ -1,5 +1,7 @@
 package com.example.plugin
 
+import com.example.plugin.utils.KotlinSerializationCborConverter
+import cxhttp.CxHttpHelper
 import io.nightfish.lightnovelreader.api.book.BookInformation
 import io.nightfish.lightnovelreader.api.book.BookVolumes
 import io.nightfish.lightnovelreader.api.book.ChapterContent
@@ -7,13 +9,19 @@ import io.nightfish.lightnovelreader.api.web.WebBookDataSource
 import io.nightfish.lightnovelreader.api.web.WebDataSource
 import io.nightfish.lightnovelreader.api.web.explore.ExplorePageProvider
 import io.nightfish.lightnovelreader.api.web.search.SearchProvider
+import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.flow.StateFlow
 
+@Suppress("unused")
 @WebDataSource(
     name = "ExampleWebDataSource",
     provider = "example.com"
 )
 class ExampleWebDataSource: WebBookDataSource {
+    init {
+        @Suppress("OPT_IN_USAGE")
+        CxHttpHelper.init(scope=MainScope(), debugLog=true, converter = KotlinSerializationCborConverter())
+    }
     override val id: Int
         get() = "example".hashCode()
     override val offLine: Boolean

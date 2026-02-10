@@ -5,6 +5,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -57,13 +58,15 @@ tasks.withType<KotlinJvmCompile>().configureEach {
 
 dependencies {
     coreLibraryDesugaring(libs.desugar.jdk.libs)
-    implementation(libs.jsoup)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.androidx.runtime)
     implementation(libs.androidx.navigation.runtime.ktx)
     implementation(libs.androidx.foundation.layout)
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.material3)
+    implementation(libs.kotlinx.serialization.cbor)
+    implementation(libs.cxhttp)
+    implementation(libs.dom4j)
 
     //LNR Api
     implementation(libs.lightnovelreader.api)

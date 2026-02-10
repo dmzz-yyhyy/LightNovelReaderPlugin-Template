@@ -4,27 +4,31 @@ agp = "9.0.0"
 kotlin = "2.3.10"
 kotlinxCoroutinesCore = "1.10.2"
 runtime = "1.10.2"
-jsoup = "1.22.1"
 navigationRuntimeKtx = "2.9.7"
 jetbrainsKotlinJvm = "2.3.10"
 foundationLayout = "1.10.2"
-composeBom = "2025.09.01"
+composeBom = "2026.01.01"
 composeMaterial3 = "1.4.0"
+dom4j = "2.2.0"
+cxhttp = "1.2.5"
+kotlinSerialization = "1.10.0"
 lightnovelreader = "refactoring-SNAPSHOT"
 
 [libraries]
+dom4j = { module = "org.dom4j:dom4j", version.ref = "dom4j" }
+cxhttp = { module = "com.zhzc0x.cxhttp:cxhttp", version.ref = "cxhttp" }
 desugar_jdk_libs = { module = "com.android.tools:desugar_jdk_libs", version.ref = "desugar" }
 androidx-runtime = { module = "androidx.compose.runtime:runtime", version.ref = "runtime" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutinesCore" }
 lightnovelreader-api = { module = "com.github.dmzz-yyhyy.LightNovelReader:api", version.ref = "lightnovelreader" }
-
-jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
 androidx-navigation-runtime-ktx = { group = "androidx.navigation", name = "navigation-runtime-ktx", version.ref = "navigationRuntimeKtx" }
 androidx-foundation-layout = { group = "androidx.compose.foundation", name = "foundation-layout", version.ref = "foundationLayout" }
 compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
 compose-material3 = { module = "androidx.compose.material3:material3", version.ref = "composeMaterial3" }
+kotlinx-serialization-cbor = { module = "org.jetbrains.kotlinx:kotlinx-serialization-cbor", version.ref = "kotlinSerialization" }
 
 [plugins]
+kotlin_serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
 android-dynamic-feature = { id = "com.android.dynamic-feature", version.ref = "agp" }
