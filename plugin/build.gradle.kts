@@ -9,11 +9,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.plugin"
+    namespace = "io.nightfish.potatolib"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.example.plugin"
+        applicationId = "io.nightfish.potatolib"
         minSdk = 24
         targetSdk = 36
         versionCode = 1

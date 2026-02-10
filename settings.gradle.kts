@@ -20,5 +20,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "ExamplePlugin"
+rootProject.name = "PotatoLib"
 include(":plugin")

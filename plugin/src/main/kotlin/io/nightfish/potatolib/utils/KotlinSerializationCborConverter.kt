@@ -1,6 +1,6 @@
 @file:Suppress("OPT_IN_USAGE")
 
-package com.example.plugin.utils
+package io.nightfish.potatolib.utils
 
 import cxhttp.converter.CxHttpConverter
 import cxhttp.response.CxHttpResult
