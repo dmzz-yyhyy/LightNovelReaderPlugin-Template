@@ -54,6 +54,11 @@ class PotatoLibWebDataSource: WebBookDataSource {
         }
     }
 
+    override val permits = 3
+    override val cache = Cache(
+        timeout = 1.hours.toInt(DurationUnit.MILLISECONDS) // 对于大多数的数据源来说, 1小时的缓存有效时长是非常足够了
+    )
+
     override val id: Int = "PotatoLib".hashCode()
 
     override val offLine get() = offlineMutaStateFlow.value
