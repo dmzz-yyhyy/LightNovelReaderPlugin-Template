@@ -1,5 +1,8 @@
 package com.example.plugin
 
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -24,11 +27,11 @@ import io.nightfish.lightnovelreader.api.userdata.UserDataRepositoryApi
 
 @Suppress("unused")
 @Plugin(
-    version = 1,
-    name = "example",
-    versionName = "0.0.1",
+    version = BuildConfig.VERSION_CODE,
+    name = "Example",
+    versionName = BuildConfig.VERSION_NAME,
     author = "none",
-    description = " a example plugin",
+    description = "a example plugin",
     updateUrl = "https://v6.gh-proxy.com/https://github.com/dmzz-yyhyy/LightNovelReader-PluginRepository/blob/main/data/com.example.plugin/",
     apiVersion = 2
 )
@@ -66,4 +69,8 @@ class ExamplePlugin(
             )
         }
     }
+}
+
+class PluginDiscoveryReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context?, intent: Intent?) {}
 }
