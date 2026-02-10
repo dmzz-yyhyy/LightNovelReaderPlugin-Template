@@ -7,10 +7,17 @@ import io.nightfish.lightnovelreader.api.book.BookVolumes
 import io.nightfish.lightnovelreader.api.book.ChapterContent
 import io.nightfish.lightnovelreader.api.web.WebBookDataSource
 import io.nightfish.lightnovelreader.api.web.WebDataSource
+import io.nightfish.lightnovelreader.api.web.explore.ExploreExpandedPageDataSource
 import io.nightfish.lightnovelreader.api.web.explore.ExplorePageProvider
+import io.nightfish.lightnovelreader.api.web.explore.ExploreTapPageDataSource
 import io.nightfish.lightnovelreader.api.web.search.SearchProvider
+import io.nightfish.lightnovelreader.api.web.search.SearchResult
+import io.nightfish.lightnovelreader.api.web.search.SearchType
 import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.flow
 
 @Suppress("unused")
 @WebDataSource(
@@ -22,35 +29,29 @@ class ExampleWebDataSource: WebBookDataSource {
         @Suppress("OPT_IN_USAGE")
         CxHttpHelper.init(scope=MainScope(), debugLog=true, converter = KotlinSerializationCborConverter())
     }
-    override val id: Int
-        get() = "example".hashCode()
-    override val offLine: Boolean
-        get() = TODO("Not yet implemented")
-    override val isOffLineFlow: StateFlow<Boolean>
-        get() = TODO("Not yet implemented")
+    override val id: Int = "example".hashCode()
+    override suspend fun isOffLine(): Boolean = true
 
-    override val searchProvider: SearchProvider
-        get() = TODO("Not yet implemented")
-    override val explorePageProvider: ExplorePageProvider
-        get() = TODO("Not yet implemented")
-
-    override suspend fun isOffLine(): Boolean {
-        TODO("Not yet implemented")
+    override val offLine: Boolean = true
+    override val isOffLineFlow: StateFlow<Boolean> = MutableStateFlow(true)
+    override val explorePageProvider: ExplorePageProvider = object: ExplorePageProvider.DefaultExplorePageProvider {
+        override val explorePageIdList: List<String> = emptyList()
+        override val exploreTapPageDataSourceMap: Map<String, ExploreTapPageDataSource> = emptyMap()
+        override val exploreExpandedPageDataSourceMap: Map<String, ExploreExpandedPageDataSource> = emptyMap()
     }
+    override val searchProvider: SearchProvider = object: SearchProvider {
+        override val searchTypes: List<SearchType> = emptyList()
 
-    override suspend fun getBookInformation(id: String): BookInformation {
-        TODO("Not yet implemented")
+        override fun search(
+            searchType: SearchType,
+            keyword: String
+        ): Flow<SearchResult> = flow {
+        }
+
     }
+    override suspend fun getBookInformation(id: String): BookInformation = BookInformation.empty()
 
-    override suspend fun getBookVolumes(id: String): BookVolumes {
-        TODO("Not yet implemented")
-    }
+    override suspend fun getBookVolumes(id: String): BookVolumes = BookVolumes.empty("")
 
-    override suspend fun getChapterContent(
-        chapterId: String,
-        bookId: String
-    ): ChapterContent {
-        TODO("Not yet implemented")
-    }
-
+    override suspend fun getChapterContent(chapterId: String, bookId: String): ChapterContent = ChapterContent.empty()
 }

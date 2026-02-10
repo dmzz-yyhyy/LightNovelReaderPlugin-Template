@@ -71,3 +71,55 @@ dependencies {
     //LNR Api
     implementation(libs.lightnovelreader.api)
 }
+
+val debugHostPkg = "indi.dmzz_yyhyy.lightnovelreader.debug"
+val releaseHostPkg = "indi.dmzz_yyhyy.lightnovelreader"
+
+
+fun pluginApk(): File =
+    File(layout.buildDirectory.asFile.get(), "outputs/apk/debug")
+        .walkTopDown()
+        .first {
+            it.isFile && it.name.endsWith(".apk") || it.name.endsWith(".lnrp")
+        }
+
+fun installPluginTask(name: String, hostPkg: String) {
+    tasks.register(name) {
+        group = "plugin"
+        dependsOn("assembleDebug")
+
+        doLast {
+            val adb = listOf(android.adbExecutable.absolutePath) +
+                    (System.getenv("ANDROID_SERIAL")?.let { listOf("-s", it) } ?: emptyList())
+            val src = pluginApk()
+            val file =
+                if (src.name.endsWith(".apk")) src
+                else File(src.parent, src.name.removeSuffix(".lnrp"))
+                    .also { src.renameTo(it) }
+
+            try {
+                providers.exec {
+                    commandLine(adb + listOf("install", "-r", "-t", file))
+                }.result.get()
+            } finally {
+                if (file != src) file.renameTo(src)
+            }
+
+            providers.exec {
+                commandLine(adb + listOf("shell", "am", "force-stop", hostPkg))
+            }.result.get()
+
+            providers.exec {
+                commandLine(
+                    adb + listOf(
+                        "shell", "monkey", "-p", hostPkg, "-c",
+                        "android.intent.category.LAUNCHER", "1"
+                    )
+                )
+            }.result.get()
+        }
+    }
+}
+
+installPluginTask("runDebugHost", debugHostPkg)
+installPluginTask("runReleaseHost", releaseHostPkg)
