@@ -66,7 +66,12 @@ dependencies {
     implementation(libs.compose.material3)
     implementation(libs.kotlinx.serialization.cbor)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.okhttp3.okhttp)
+    implementation(libs.okhttp3.logging.interceptor)
     implementation(libs.cxhttp)
+    implementation(libs.jaxen)
+    implementation(libs.kotlin.result)
+    implementation(libs.kotlin.result.coroutines)
     implementation(libs.jsoup)
 
     //LNR Api

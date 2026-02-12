@@ -34,5 +34,4 @@ class KotlinSerializationCborConverter (
     override fun <T> convert(value: T, tType: Class<out T>): ByteArray {
         return cbor.encodeToByteArray(cbor.serializersModule.serializer(tType), value as Any)
     }
-
 }
