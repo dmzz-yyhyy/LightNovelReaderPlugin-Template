@@ -66,7 +66,7 @@ dependencies {
     implementation(libs.compose.material3)
     implementation(libs.kotlinx.serialization.cbor)
     implementation(libs.cxhttp)
-    implementation(libs.dom4j)
+    implementation(libs.jsoup)
 
     //LNR Api
     implementation(libs.lightnovelreader.api)
@@ -89,7 +89,7 @@ fun installPluginTask(name: String, hostPkg: String) {
         dependsOn("assembleDebug")
 
         doLast {
-            val adb = listOf(android.adbExecutable.absolutePath) +
+            val adb = listOf(androidComponents.sdkComponents.adb.get().asFile.absolutePath) +
                     (System.getenv("ANDROID_SERIAL")?.let { listOf("-s", it) } ?: emptyList())
             val src = pluginApk()
             val file =

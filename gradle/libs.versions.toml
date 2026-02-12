@@ -3,19 +3,18 @@ desugar = "2.1.5"
 agp = "9.0.0"
 kotlin = "2.3.10"
 kotlinxCoroutinesCore = "1.10.2"
-runtime = "1.10.2"
+runtime = "1.10.3"
 navigationRuntimeKtx = "2.9.7"
 jetbrainsKotlinJvm = "2.3.10"
-foundationLayout = "1.10.2"
-composeBom = "2026.01.01"
+foundationLayout = "1.10.3"
+composeBom = "2026.02.00"
 composeMaterial3 = "1.4.0"
-dom4j = "2.2.0"
 cxhttp = "1.2.5"
 kotlinSerialization = "1.10.0"
+jsoup = "1.22.1"
 lightnovelreader = "refactoring-SNAPSHOT"
 
 [libraries]
-dom4j = { module = "org.dom4j:dom4j", version.ref = "dom4j" }
 cxhttp = { module = "com.zhzc0x.cxhttp:cxhttp", version.ref = "cxhttp" }
 desugar_jdk_libs = { module = "com.android.tools:desugar_jdk_libs", version.ref = "desugar" }
 androidx-runtime = { module = "androidx.compose.runtime:runtime", version.ref = "runtime" }
@@ -26,6 +25,7 @@ androidx-foundation-layout = { group = "androidx.compose.foundation", name = "fo
 compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
 compose-material3 = { module = "androidx.compose.material3:material3", version.ref = "composeMaterial3" }
 kotlinx-serialization-cbor = { module = "org.jetbrains.kotlinx:kotlinx-serialization-cbor", version.ref = "kotlinSerialization" }
+jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
 
 [plugins]
 kotlin_serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
