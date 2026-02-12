@@ -65,6 +65,7 @@ dependencies {
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.material3)
     implementation(libs.kotlinx.serialization.cbor)
+    implementation(libs.kotlinx.serialization.json)
     implementation(libs.cxhttp)
     implementation(libs.jsoup)
 

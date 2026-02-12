@@ -25,6 +25,7 @@ androidx-foundation-layout = { group = "androidx.compose.foundation", name = "fo
 compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
 compose-material3 = { module = "androidx.compose.material3:material3", version.ref = "composeMaterial3" }
 kotlinx-serialization-cbor = { module = "org.jetbrains.kotlinx:kotlinx-serialization-cbor", version.ref = "kotlinSerialization" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinSerialization" }
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
 
 [plugins]
