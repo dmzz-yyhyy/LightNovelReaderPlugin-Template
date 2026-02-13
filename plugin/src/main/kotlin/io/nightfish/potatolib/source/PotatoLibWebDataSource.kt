@@ -23,6 +23,7 @@ import io.nightfish.lightnovelreader.api.web.WebBookDataSource
 import io.nightfish.lightnovelreader.api.web.WebDataSource
 import io.nightfish.lightnovelreader.api.web.explore.ExplorePageProvider
 import io.nightfish.lightnovelreader.api.web.search.SearchProvider
+import io.nightfish.potatolib.source.explore.PotatoLibExplorePageProvider
 import io.nightfish.potatolib.utils.KotlinSerializationCborConverter
 import io.nightfish.potatolib.utils.UserAgentGenerator
 import io.nightfish.potatolib.utils.autoReconnectionGet
@@ -241,6 +242,6 @@ class PotatoLibWebDataSource: WebBookDataSource {
         )
     }
 
-    override val explorePageProvider: ExplorePageProvider = PotatoLibExplorePageProvider()
+    override val explorePageProvider: ExplorePageProvider = PotatoLibExplorePageProvider(::getBookInformation)
     override val searchProvider: SearchProvider = PotatoLibSearchProvider()
 }
