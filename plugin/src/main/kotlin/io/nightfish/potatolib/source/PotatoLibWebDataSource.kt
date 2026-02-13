@@ -2,6 +2,7 @@ package io.nightfish.potatolib.source
 
 import android.net.Uri
 import android.util.Log
+import androidx.core.net.toUri
 import com.github.michaelbull.result.unwrap
 import com.github.michaelbull.result.unwrapError
 import cxhttp.CxHttp
@@ -11,8 +12,12 @@ import io.nightfish.lightnovelreader.api.book.BookVolumes
 import io.nightfish.lightnovelreader.api.book.ChapterContent
 import io.nightfish.lightnovelreader.api.book.ChapterInformation
 import io.nightfish.lightnovelreader.api.book.MutableBookInformation
+import io.nightfish.lightnovelreader.api.book.MutableChapterContent
 import io.nightfish.lightnovelreader.api.book.Volume
 import io.nightfish.lightnovelreader.api.book.WordCount
+import io.nightfish.lightnovelreader.api.content.builder.ContentBuilder
+import io.nightfish.lightnovelreader.api.content.builder.image
+import io.nightfish.lightnovelreader.api.content.builder.simpleText
 import io.nightfish.lightnovelreader.api.util.Cache
 import io.nightfish.lightnovelreader.api.web.WebBookDataSource
 import io.nightfish.lightnovelreader.api.web.WebDataSource
@@ -29,6 +34,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import org.jsoup.nodes.Element
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import kotlin.time.Duration.Companion.hours
@@ -191,7 +197,49 @@ class PotatoLibWebDataSource: WebBookDataSource {
         )
     }
 
-    override suspend fun getChapterContent(chapterId: String, bookId: String): ChapterContent = ChapterContent.empty()
+    override suspend fun getChapterContent(chapterId: String, bookId: String): ChapterContent {
+        val doc = autoReconnectionGet("$HOST/book/$chapterId") {
+            header("user-agent", UserAgentGenerator.generate())
+        }.let {
+            if (it.isOk) return@let it.unwrap()
+            else {
+                Log.e(TAG, "failed to get chapter content (bookId=$bookId,chapterId=$chapterId)")
+                it.unwrapError().printStackTrace()
+                return ChapterContent.empty(chapterId)
+            }
+        }
+
+        val title = doc.selectSingleXPath("/html/body/main/div/div/header/h1")?.text()
+            ?: return ChapterContent.empty(chapterId).also { Log.e(TAG, "failed to get chapter content title") }
+        val content = doc.selectSingleXPath("/html/body/main/div/div/article")?.let { contentNode ->
+            ContentBuilder().apply {
+                for (node in contentNode.childNodes()) {
+                    when (node) {
+                        is Element if node.selectFirst("img") == null -> simpleText(node.childNodes().first().nodeValue())
+                        is Element if node.selectFirst("img") != null -> image((HOST + node.childNodes().first().attr("src").also { println(it) }).toUri())
+                    }
+                }
+            }.build()
+        } ?: return ChapterContent.empty(chapterId).also { Log.e(TAG, "failed to get chapter content title") }
+        val lastChapter = doc.selectSingleXPath("/html/body/main/div/div/footer/div/a[1]")
+            ?.let { node ->
+                if (node.attr("aria-disabled") == "true") return@let ""
+                return@let node.attr("href").replace("/book/", "")
+            } ?: return ChapterContent.empty(chapterId).also { Log.e(TAG, "failed to get last chapter id") }
+        val nextChapter = doc.selectSingleXPath("/html/body/main/div/div/footer/div/a[3]")
+            ?.let { node ->
+                if (node.attr("aria-disabled") == "true") return@let ""
+                return@let node.attr("href").replace("/book/", "")
+            } ?: return ChapterContent.empty(chapterId).also { Log.e(TAG, "failed to get next chapter id") }
+
+        return MutableChapterContent(
+            id = chapterId,
+            title = title,
+            content = content,
+            lastChapter = lastChapter,
+            nextChapter = nextChapter
+        )
+    }
 
     override val explorePageProvider: ExplorePageProvider = PotatoLibExplorePageProvider()
     override val searchProvider: SearchProvider = PotatoLibSearchProvider()
