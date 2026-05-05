@@ -6,20 +6,17 @@ import com.github.michaelbull.result.runCatching
 import cxhttp.CxHttp
 import cxhttp.request.Request
 import cxhttp.response.Response
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 
 suspend fun autoReconnectionGet(
     url: String,
     block: suspend Request.() -> Unit = {}
-): Result<Document, Throwable> = withContext(Dispatchers.IO) {
+): Result<Document, Throwable>  {
     suspend fun get(): Response {
         return CxHttp
             .get(url, block)
-            .scope(this)
             .await()
     }
     var retryTime = 3
@@ -32,7 +29,7 @@ suspend fun autoReconnectionGet(
         delay(retryDelay)
         retryDelay *= 2
     }
-    return@withContext if (response.isSuccessful) {
+    return if (response.isSuccessful) {
         runCatching {
             response.body!!
                 .string()

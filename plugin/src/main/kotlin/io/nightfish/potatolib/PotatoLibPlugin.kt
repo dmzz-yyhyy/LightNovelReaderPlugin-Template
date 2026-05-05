@@ -13,7 +13,7 @@ import io.nightfish.lightnovelreader.api.userdata.UserDataRepositoryApi
     author = "NightFish",
     description = "土豆文库数据源",
     updateUrl = "",
-    apiVersion = 2
+    apiVersion = 4
 )
 class PotatoLibPlugin(
     val userDataRepositoryApi: UserDataRepositoryApi

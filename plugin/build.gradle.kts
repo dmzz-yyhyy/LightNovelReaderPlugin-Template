@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.google.ksp)
 }
 
 android {
@@ -56,6 +57,20 @@ tasks.withType<KotlinJvmCompile>().configureEach {
     }
 }
 
+androidComponents {
+    onVariants { variant ->
+        variant.sources.manifests.addStaticManifestFile(
+            layout.buildDirectory.file("generated/ksp/${variant.name}/resources/auto_register_manifest.xml").get().toString()
+        )
+    }
+}
+
+afterEvaluate {
+    listOf("Debug", "Release").forEach { variant ->
+        tasks.findByName("process${variant}MainManifest")?.dependsOn("ksp${variant}Kotlin")
+    }
+}
+
 dependencies {
     coreLibraryDesugaring(libs.desugar.jdk.libs)
     implementation(libs.kotlinx.coroutines.core)
@@ -75,29 +90,30 @@ dependencies {
     implementation(libs.jsoup)
 
     //LNR Api
-    implementation(libs.lightnovelreader.api)
+    compileOnly(libs.lightnovelreader.api)
+    ksp(libs.lightnovelreader.compiler)
 }
 
 val debugHostPkg = "indi.dmzz_yyhyy.lightnovelreader.debug"
 val releaseHostPkg = "indi.dmzz_yyhyy.lightnovelreader"
 
 
-fun pluginApk(): File =
-    File(layout.buildDirectory.asFile.get(), "outputs/apk/debug")
+fun pluginApk(variant: String): File =
+    File(layout.buildDirectory.asFile.get(), "outputs/apk/${variant.lowercase()}")
         .walkTopDown()
         .first {
             it.isFile && it.name.endsWith(".apk") || it.name.endsWith(".lnrp")
         }
 
-fun installPluginTask(name: String, hostPkg: String) {
+fun installPluginTask(name: String, hostPkg: String, variant: String) {
     tasks.register(name) {
         group = "plugin"
-        dependsOn("assembleDebug")
+        dependsOn("assemble$variant")
 
         doLast {
             val adb = listOf(androidComponents.sdkComponents.adb.get().asFile.absolutePath) +
                     (System.getenv("ANDROID_SERIAL")?.let { listOf("-s", it) } ?: emptyList())
-            val src = pluginApk()
+            val src = pluginApk(variant)
             val file =
                 if (src.name.endsWith(".apk")) src
                 else File(src.parent, src.name.removeSuffix(".lnrp"))
@@ -127,5 +143,7 @@ fun installPluginTask(name: String, hostPkg: String) {
     }
 }
 
-installPluginTask("runDebugHost", debugHostPkg)
-installPluginTask("runReleaseHost", releaseHostPkg)
+installPluginTask("runDebugHostWithDebugPlugin", debugHostPkg, "Debug")
+installPluginTask("runReleaseHostWithDebugPlugin", releaseHostPkg, "Debug")
+installPluginTask("runDebugHostWithReleasePlugin", debugHostPkg, "Release")
+installPluginTask("runReleaseHostWithReleasePlugin", releaseHostPkg, "Release")
