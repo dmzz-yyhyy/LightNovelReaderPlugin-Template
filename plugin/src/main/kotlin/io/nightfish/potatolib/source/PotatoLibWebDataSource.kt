@@ -3,10 +3,21 @@ package io.nightfish.potatolib.source
 import android.net.Uri
 import android.util.Log
 import androidx.core.net.toUri
-import com.github.michaelbull.result.unwrap
-import com.github.michaelbull.result.unwrapError
-import cxhttp.CxHttp
-import cxhttp.CxHttpHelper
+import com.github.michaelbull.result.onErr
+import com.github.michaelbull.result.onOk
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.HttpRequestRetry
+import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.UserAgent
+import io.ktor.client.plugins.cookies.HttpCookies
+import io.ktor.client.plugins.logging.ANDROID
+import io.ktor.client.plugins.logging.LogLevel
+import io.ktor.client.plugins.logging.Logger
+import io.ktor.client.plugins.logging.Logging
+import io.ktor.client.request.get
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.isSuccess
 import io.nightfish.lightnovelreader.api.book.BookInformation
 import io.nightfish.lightnovelreader.api.book.BookVolumes
 import io.nightfish.lightnovelreader.api.book.ChapterContent
@@ -24,18 +35,19 @@ import io.nightfish.lightnovelreader.api.web.WebDataSource
 import io.nightfish.lightnovelreader.api.web.explore.ExplorePageProvider
 import io.nightfish.lightnovelreader.api.web.search.SearchProvider
 import io.nightfish.potatolib.source.explore.PotatoLibExplorePageProvider
-import io.nightfish.potatolib.utils.KotlinSerializationCborConverter
-import io.nightfish.potatolib.utils.UserAgentGenerator
-import io.nightfish.potatolib.utils.autoReconnectionGet
+import io.nightfish.potatolib.utils.safeGet
 import io.nightfish.potatolib.utils.selectSingleXPath
+import io.nightfish.potatolib.utils.toId
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.io.EOFException
+import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
+import java.net.ConnectException
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import kotlin.time.Duration.Companion.hours
@@ -45,25 +57,41 @@ import kotlin.time.DurationUnit
 @Suppress("unused")
 @WebDataSource(
     name = "PotatoLib",
-    provider = "library.curiousers.org by NightFish"
+    provider = "library.nariko.org by NightFish"
 )
 class PotatoLibWebDataSource: WebBookDataSource {
     companion object {
         const val TAG = "PotatoLibWebDataSource"
-        const val HOST = "https://library.curiousers.org"
+        const val HOST = "https://library.nariko.org"
     }
 
     private val coroutineScope = CoroutineScope(Dispatchers.IO)
     private val offlineMutaStateFlow = MutableStateFlow(true)
     private val dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd")
 
-    init {
-        @Suppress("OPT_IN_USAGE")
-        CxHttpHelper.init(
-            scope = MainScope(),
-            debugLog = true,
-            converter = KotlinSerializationCborConverter()
-        )
+    val ktorClient = HttpClient(CIO) {
+        install(UserAgent) {
+            agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
+                    "AppleWebKit/537.36 (KHTML, like Gecko) " +
+                    "Chrome/125.0.0.0 Safari/537.36"
+        }
+
+        install(HttpCookies)
+        install(HttpRequestRetry) {
+            retryOnServerErrors(maxRetries = 3)
+            exponentialDelay()
+            retryIf { _, response ->
+                !response.status.isSuccess()
+            }
+            retryOnExceptionIf { _, cause ->
+                cause is EOFException || cause is ConnectException
+            }
+        }
+        install(HttpTimeout)
+        install(Logging) {
+            logger = Logger.ANDROID
+            level = LogLevel.INFO
+        }
     }
 
     override fun onLoad() {
@@ -87,32 +115,28 @@ class PotatoLibWebDataSource: WebBookDataSource {
         timeout = 1.hours.toInt(DurationUnit.MILLISECONDS) // 对于大多数的数据源来说, 1小时的缓存有效时长是非常足够了
     )
 
-    override val id: Int = "PotatoLib".hashCode()
+    override val id = "potato_lib".toId()
 
     override val offLine get() = offlineMutaStateFlow.value
 
     override suspend fun isOffLine(): Boolean  {
-        return !CxHttp
-            .get(HOST) {
-                header("user-agent", UserAgentGenerator.generate())
-            }
-            .await()
-            .isSuccessful
+        return !ktorClient.get(HOST).status.isSuccess()
     }
 
     override val isOffLineFlow: StateFlow<Boolean>  = offlineMutaStateFlow
 
     override suspend fun getBookInformation(id: String): BookInformation {
-        val doc = autoReconnectionGet("$HOST/book/$id") {
-            header("user-agent", UserAgentGenerator.generate())
-        }.let {
-            if (it.isOk) return@let it.unwrap()
-            else {
+        val doc = ktorClient.safeGet("$HOST/book/$id")
+            .onErr {
                 Log.e(TAG, "failed to get book information (id=$id)")
-                it.unwrapError().printStackTrace()
+                it.printStackTrace()
                 return BookInformation.empty(id)
             }
-        }
+            .onOk {
+                if (it.status.isSuccess()) return@onOk
+                Log.e(TAG, "failed to get book information (id=$id) with state: ${it.status}")
+                return BookInformation.empty(id)
+            }.component1()?.let { Jsoup.parse(it.bodyAsText()) } ?: return BookInformation.empty(id)
 
         val title = doc.selectSingleXPath("/html/body/main/div/div[1]/div[2]/h1")?.text() ?: return BookInformation.empty(id)
         val subTitle = doc.selectSingleXPath("/html/body/main/div/div[1]/div[2]/p[1]")?.text() ?: return BookInformation.empty(id)
@@ -165,16 +189,17 @@ class PotatoLibWebDataSource: WebBookDataSource {
     }
 
     override suspend fun getBookVolumes(id: String): BookVolumes {
-        val doc = autoReconnectionGet("$HOST/book/$id") {
-            header("user-agent", UserAgentGenerator.generate())
-        }.let {
-            if (it.isOk) return@let it.unwrap()
-            else {
+        val doc = ktorClient.safeGet("$HOST/book/$id")
+            .onErr {
                 Log.e(TAG, "failed to get book volumes (id=$id)")
-                it.unwrapError().printStackTrace()
+                it.printStackTrace()
                 return BookVolumes.empty(id)
             }
-        }
+            .onOk {
+                if (it.status.isSuccess()) return@onOk
+                Log.e(TAG, "failed to get book volumes (id=$id) with state: ${it.status}")
+                return BookVolumes.empty(id)
+            }.component1()?.let { Jsoup.parse(it.bodyAsText()) } ?: return BookVolumes.empty(id)
 
         val volumes = doc.selectXpath("/html/body/main/div/div[2]/div")
             .mapIndexed { index, volumeNode ->
@@ -199,16 +224,18 @@ class PotatoLibWebDataSource: WebBookDataSource {
     }
 
     override suspend fun getChapterContent(chapterId: String, bookId: String): ChapterContent {
-        val doc = autoReconnectionGet("$HOST/book/$chapterId") {
-            header("user-agent", UserAgentGenerator.generate())
-        }.let {
-            if (it.isOk) return@let it.unwrap()
-            else {
-                Log.e(TAG, "failed to get chapter content (bookId=$bookId,chapterId=$chapterId)")
-                it.unwrapError().printStackTrace()
+        val doc = ktorClient.safeGet("$HOST/book/$chapterId")
+            .onErr {
+                Log.e(TAG, "$HOST/book/$chapterId")
+                it.printStackTrace()
                 return ChapterContent.empty(chapterId)
             }
-        }
+            .onOk {
+                if (it.status.isSuccess()) return@onOk
+                Log.e(TAG, "failed to get book chapter (id=$chapterId) with state: ${it.status}")
+                return ChapterContent.empty(chapterId)
+            }.component1()?.let { Jsoup.parse(it.bodyAsText()) } ?: return ChapterContent.empty(chapterId)
+
 
         val title = doc.selectSingleXPath("/html/body/main/div/div/header/h1")?.text()
             ?: return ChapterContent.empty(chapterId).also { Log.e(TAG, "failed to get chapter content title") }
@@ -242,6 +269,6 @@ class PotatoLibWebDataSource: WebBookDataSource {
         )
     }
 
-    override val explorePageProvider: ExplorePageProvider = PotatoLibExplorePageProvider(::getBookInformation)
-    override val searchProvider: SearchProvider = PotatoLibSearchProvider()
+    override val explorePageProvider: ExplorePageProvider = PotatoLibExplorePageProvider(ktorClient, ::getBookInformation)
+    override val searchProvider: SearchProvider = PotatoLibSearchProvider(ktorClient)
 }

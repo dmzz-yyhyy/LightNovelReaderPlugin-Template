@@ -1,37 +1,46 @@
 package io.nightfish.potatolib.source.explore
 
 import android.net.Uri
-import com.github.michaelbull.result.unwrap
-import com.github.michaelbull.result.unwrapError
+import android.util.Log
+import com.github.michaelbull.result.onErr
+import com.github.michaelbull.result.onOk
+import io.ktor.client.HttpClient
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.isSuccess
 import io.nightfish.lightnovelreader.api.book.BookInformation
 import io.nightfish.lightnovelreader.api.explore.ExploreBooksRow
 import io.nightfish.lightnovelreader.api.explore.ExploreDisplayBook
 import io.nightfish.lightnovelreader.api.web.explore.ExploreTapPageDataSource
 import io.nightfish.potatolib.source.PotatoLibWebDataSource.Companion.HOST
-import io.nightfish.potatolib.utils.UserAgentGenerator
-import io.nightfish.potatolib.utils.autoReconnectionGet
+import io.nightfish.potatolib.source.PotatoLibWebDataSource.Companion.TAG
+import io.nightfish.potatolib.utils.safeGet
 import io.nightfish.potatolib.utils.selectSingleXPath
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.TextNode
 
 class HomeTapPageDataSource(
+    val ktorClient: HttpClient,
     val getBookInformation: suspend (id: String) -> BookInformation
 ): ExploreTapPageDataSource {
     override val title = "首页"
 
     override fun getRowsFlow(): Flow<List<ExploreBooksRow>> = flow {
         val rows = mutableListOf<ExploreBooksRow>()
-        val doc = autoReconnectionGet(HOST) {
-            header("user-agent", UserAgentGenerator.generate())
-        }.let {
-            if (it.isOk) return@let it.unwrap()
-            else {
-                it.unwrapError().printStackTrace()
+        val doc = ktorClient.safeGet(HOST)
+            .onErr {
+                Log.e(TAG, "failed to get home page")
+                it.printStackTrace()
                 return@flow
             }
-        }
+            .onOk {
+                if (it.status.isSuccess()) return@onOk
+                Log.e(TAG, "failed to get home page with state: ${it.status}")
+                return@flow
+            }.component1()?.let { Jsoup.parse(it.bodyAsText()) } ?: return@flow
+
         rows.add(getBestOfYear(doc))
         emit(rows)
         rows.add(getLastUpdate(doc))

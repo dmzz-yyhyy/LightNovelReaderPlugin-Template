@@ -11,12 +11,12 @@ plugins {
 
 android {
     namespace = "io.nightfish.potatolib"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "io.nightfish.potatolib"
         minSdk = 24
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 1
         versionName = "1.0"
     }
@@ -81,13 +81,14 @@ dependencies {
     implementation(libs.compose.material3)
     implementation(libs.kotlinx.serialization.cbor)
     implementation(libs.kotlinx.serialization.json)
-    implementation(libs.okhttp3.okhttp)
-    implementation(libs.okhttp3.logging.interceptor)
-    implementation(libs.cxhttp)
     implementation(libs.jaxen)
     implementation(libs.kotlin.result)
     implementation(libs.kotlin.result.coroutines)
     implementation(libs.jsoup)
+    // Ktor
+    implementation(libs.ktor.client.core)
+    implementation(libs.ktor.client.cio)
+    implementation(libs.ktor.client.logging)
 
     //LNR Api
     compileOnly(libs.lightnovelreader.api)
@@ -107,6 +108,7 @@ fun pluginApk(variant: String): File =
 
 fun installPluginTask(name: String, hostPkg: String, variant: String) {
     tasks.register(name) {
+        description = ""
         group = "plugin"
         dependsOn("assemble$variant")
 
