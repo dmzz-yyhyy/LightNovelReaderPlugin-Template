@@ -7,7 +7,7 @@ import com.github.michaelbull.result.onOk
 import io.ktor.client.HttpClient
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.isSuccess
-import io.nightfish.lightnovelreader.api.book.MutableBookInformation
+import io.nightfish.lightnovelreader.api.book.BookInformation
 import io.nightfish.lightnovelreader.api.book.WordCount
 import io.nightfish.lightnovelreader.api.util.local
 import io.nightfish.lightnovelreader.api.web.search.SearchProvider
@@ -25,6 +25,7 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 class PotatoLibSearchProvider(
+    val potatoLibWebDataSource: PotatoLibWebDataSource,
     val ktorClient: HttpClient
 ): SearchProvider {
     private val dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd 更新")
@@ -60,6 +61,8 @@ class PotatoLibSearchProvider(
         }
         for (element in elements) {
             val id = element.attr("href").replace("/book/", "")
+            //仅需提供书本id
+            emit(SearchResult.MultipleBook(id))
             val title = element.selectSingleXPath("./div[2]/h3")
                 ?.childNodes()
                 ?.first { it is TextNode }
@@ -103,12 +106,12 @@ class PotatoLibSearchProvider(
                 ?.let { HOST + it }
                 ?.let(Uri::parse)
                 ?: continue
-
-            val bookInformation = MutableBookInformation(
+            //如果探索页面本身可以提供足够多的数据, 可以将其存放至缓存里, 可以减少重复请求次数
+            val bookInformation = BookInformation(
                 id = id,
                 title = title,
                 subtitle = subTitle,
-                coverUrl = coverUrl,
+                coverUri = coverUrl,
                 author = author,
                 description = description,
                 tags = tags,
@@ -117,7 +120,9 @@ class PotatoLibSearchProvider(
                 lastUpdated = lastUpdate,
                 isComplete = isCompleted
             )
-            emit(SearchResult.MultipleBook(bookInformation))
+            potatoLibWebDataSource.cache.cache(id.hashCode()) {
+                bookInformation
+            }
         }
         emit(SearchResult.End())
     }

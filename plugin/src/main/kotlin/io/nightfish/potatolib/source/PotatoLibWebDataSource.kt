@@ -1,10 +1,9 @@
 package io.nightfish.potatolib.source
 
 import android.net.Uri
-import android.util.Log
 import androidx.core.net.toUri
-import com.github.michaelbull.result.onErr
-import com.github.michaelbull.result.onOk
+import com.github.michaelbull.result.Err
+import com.github.michaelbull.result.coroutines.coroutineBinding
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.HttpRequestRetry
@@ -22,13 +21,13 @@ import io.nightfish.lightnovelreader.api.book.BookInformation
 import io.nightfish.lightnovelreader.api.book.BookVolumes
 import io.nightfish.lightnovelreader.api.book.ChapterContent
 import io.nightfish.lightnovelreader.api.book.ChapterInformation
-import io.nightfish.lightnovelreader.api.book.MutableBookInformation
-import io.nightfish.lightnovelreader.api.book.MutableChapterContent
 import io.nightfish.lightnovelreader.api.book.Volume
 import io.nightfish.lightnovelreader.api.book.WordCount
 import io.nightfish.lightnovelreader.api.content.builder.ContentBuilder
 import io.nightfish.lightnovelreader.api.content.builder.image
 import io.nightfish.lightnovelreader.api.content.builder.simpleText
+import io.nightfish.lightnovelreader.api.error.WebRequestError
+import io.nightfish.lightnovelreader.api.error.mapAsWebRequestError
 import io.nightfish.lightnovelreader.api.util.Cache
 import io.nightfish.lightnovelreader.api.web.WebBookDataSource
 import io.nightfish.lightnovelreader.api.web.WebDataSource
@@ -125,59 +124,55 @@ class PotatoLibWebDataSource: WebBookDataSource {
 
     override val isOffLineFlow: StateFlow<Boolean>  = offlineMutaStateFlow
 
-    override suspend fun getBookInformation(id: String): BookInformation {
+    override suspend fun getBookInformation(id: String) = coroutineBinding {
         val doc = ktorClient.safeGet("$HOST/book/$id")
-            .onErr {
-                Log.e(TAG, "failed to get book information (id=$id)")
-                it.printStackTrace()
-                return BookInformation.empty(id)
-            }
-            .onOk {
-                if (it.status.isSuccess()) return@onOk
-                Log.e(TAG, "failed to get book information (id=$id) with state: ${it.status}")
-                return BookInformation.empty(id)
-            }.component1()?.let { Jsoup.parse(it.bodyAsText()) } ?: return BookInformation.empty(id)
+            .mapAsWebRequestError("网络请求失败", "请求书本详情信息时失败(id=$id)")
+            .bind()
+            .let { Jsoup.parse(it.bodyAsText()) }
 
-        val title = doc.selectSingleXPath("/html/body/main/div/div[1]/div[2]/h1")?.text() ?: return BookInformation.empty(id)
-        val subTitle = doc.selectSingleXPath("/html/body/main/div/div[1]/div[2]/p[1]")?.text() ?: return BookInformation.empty(id)
-        val author = doc.selectSingleXPath("/html/body/main/div/div[1]/div[2]/div[1]/div[1]/p[2]")?.text() ?: return BookInformation.empty(id)
+        val title = doc.selectSingleXPath("/html/body/main/div/div[1]/div[2]/h1")?.text()
+            ?: Err(WebRequestError("解析失败", "解析书本标题时失败(id=$id)")).bind()
+        val subTitle = doc.selectSingleXPath("/html/body/main/div/div[1]/div[2]/p[1]")?.text()
+            ?: Err(WebRequestError("解析失败", "解析书本副标题时失败(id=$id)")).bind()
+        val author = doc.selectSingleXPath("/html/body/main/div/div[1]/div[2]/div[1]/div[1]/p[2]")?.text()
+            ?: Err(WebRequestError("解析失败", "解析书本作者时失败(id=$id)")).bind()
         val lastUpdate = doc.selectSingleXPath("/html/body/main/div/div[1]/div[2]/div[1]/div[2]/p[2]")
             ?.text()
             ?.let { LocalDate.parse(it, dateTimeFormatter) }
             ?.atStartOfDay()
-            ?: return BookInformation.empty(id)
+            ?: Err(WebRequestError("解析失败", "解析书本上次更新时间时失败(id=$id)")).bind()
         val wordCunt = doc.selectSingleXPath("/html/body/main/div/div[1]/div[2]/div[1]/div[3]/p[2]")
             ?.text()
             ?.split(" ")
             ?.firstOrNull()
             ?.toIntOrNull()
             ?.let { WordCount(it) }
-            ?: return BookInformation.empty(id)
+            ?: Err(WebRequestError("解析失败", "解析书本字数时失败(id=$id)")).bind()
         val isCompleted = doc.selectSingleXPath("/html/body/main/div/div[1]/div[2]/div[1]/div[4]/p[2]")
             ?.text()
             ?.contains("已完结")
-            ?: return BookInformation.empty(id)
+            ?: Err(WebRequestError("解析失败", "解析书本完结状态时失败(id=$id)")).bind()
         val publishingHouse = doc.selectSingleXPath("/html/body/main/div/div[1]/div[2]/div[1]/div[5]/p[2]")
             ?.text()
-            ?: return BookInformation.empty(id)
+            ?: Err(WebRequestError("解析失败", "解析书本出版社时失败(id=$id)")).bind()
         val tags = doc.selectXpath("/html/body/main/div/div[1]/div[2]/div/a")
             .map {
                 it.text().replaceFirst("#", "")
             }
         val description = doc.selectSingleXPath("/html/body/main/div/div[1]/div[2]/p[2]")
             ?.text()
-            ?: return BookInformation.empty(id)
-        val coverUrl = doc.selectSingleXPath("/html/body/main/div/div[1]/div[1]/img")
+            ?: Err(WebRequestError("解析失败", "解析书本描述时失败(id=$id)")).bind()
+        val coverUri = doc.selectSingleXPath("/html/body/main/div/div[1]/div[1]/img")
             ?.attr("src")
             ?.let { HOST + it }
             ?.let(Uri::parse)
-            ?: return BookInformation.empty(id)
+            ?: Err(WebRequestError("解析失败", "解析书本封面时失败(id=$id)")).bind()
 
-        return MutableBookInformation(
+        return@coroutineBinding BookInformation(
             id = id,
             title = title,
             subtitle = subTitle,
-            coverUrl = coverUrl,
+            coverUri = coverUri,
             author = author,
             description = description,
             tags = tags,
@@ -188,18 +183,11 @@ class PotatoLibWebDataSource: WebBookDataSource {
         )
     }
 
-    override suspend fun getBookVolumes(id: String): BookVolumes {
+    override suspend fun getBookVolumes(id: String) = coroutineBinding {
         val doc = ktorClient.safeGet("$HOST/book/$id")
-            .onErr {
-                Log.e(TAG, "failed to get book volumes (id=$id)")
-                it.printStackTrace()
-                return BookVolumes.empty(id)
-            }
-            .onOk {
-                if (it.status.isSuccess()) return@onOk
-                Log.e(TAG, "failed to get book volumes (id=$id) with state: ${it.status}")
-                return BookVolumes.empty(id)
-            }.component1()?.let { Jsoup.parse(it.bodyAsText()) } ?: return BookVolumes.empty(id)
+            .mapAsWebRequestError("网络请求失败", "请求书本目录时失败(id=$id)")
+            .bind()
+            .let { Jsoup.parse(it.bodyAsText()) }
 
         val volumes = doc.selectXpath("/html/body/main/div/div[2]/div")
             .mapIndexed { index, volumeNode ->
@@ -217,28 +205,20 @@ class PotatoLibWebDataSource: WebBookDataSource {
                     chapters = chapters,
                 )
             }
-        return BookVolumes(
+        return@coroutineBinding BookVolumes(
             bookId = id,
             volumes = volumes
         )
     }
 
-    override suspend fun getChapterContent(chapterId: String, bookId: String): ChapterContent {
+    override suspend fun getChapterContent(chapterId: String, bookId: String) = coroutineBinding {
         val doc = ktorClient.safeGet("$HOST/book/$chapterId")
-            .onErr {
-                Log.e(TAG, "$HOST/book/$chapterId")
-                it.printStackTrace()
-                return ChapterContent.empty(chapterId)
-            }
-            .onOk {
-                if (it.status.isSuccess()) return@onOk
-                Log.e(TAG, "failed to get book chapter (id=$chapterId) with state: ${it.status}")
-                return ChapterContent.empty(chapterId)
-            }.component1()?.let { Jsoup.parse(it.bodyAsText()) } ?: return ChapterContent.empty(chapterId)
-
+            .mapAsWebRequestError("网络请求失败", "请求章节内容时失败(chapterId=$chapterId,bookId=$bookId)")
+            .bind()
+            .let { Jsoup.parse(it.bodyAsText()) }
 
         val title = doc.selectSingleXPath("/html/body/main/div/div/header/h1")?.text()
-            ?: return ChapterContent.empty(chapterId).also { Log.e(TAG, "failed to get chapter content title") }
+            ?: Err(WebRequestError("解析失败", "解析章节标题时失败(id=$id)")).bind()
         val content = doc.selectSingleXPath("/html/body/main/div/div/article")?.let { contentNode ->
             ContentBuilder().apply {
                 for (node in contentNode.childNodes()) {
@@ -248,27 +228,27 @@ class PotatoLibWebDataSource: WebBookDataSource {
                     }
                 }
             }.build()
-        } ?: return ChapterContent.empty(chapterId).also { Log.e(TAG, "failed to get chapter content title") }
-        val lastChapter = doc.selectSingleXPath("/html/body/main/div/div/footer/div/a[1]")
+        } ?: Err(WebRequestError("解析失败", "解析章节内容时失败(id=$id)")).bind()
+        val prevChapter = doc.selectSingleXPath("/html/body/main/div/div/footer/div/a[1]")
             ?.let { node ->
                 if (node.attr("aria-disabled") == "true") return@let ""
                 return@let node.attr("href").replace("/book/", "")
-            } ?: return ChapterContent.empty(chapterId).also { Log.e(TAG, "failed to get last chapter id") }
+            }
         val nextChapter = doc.selectSingleXPath("/html/body/main/div/div/footer/div/a[3]")
             ?.let { node ->
                 if (node.attr("aria-disabled") == "true") return@let ""
                 return@let node.attr("href").replace("/book/", "")
-            } ?: return ChapterContent.empty(chapterId).also { Log.e(TAG, "failed to get next chapter id") }
+            }
 
-        return MutableChapterContent(
+        return@coroutineBinding ChapterContent(
             id = chapterId,
             title = title,
             content = content,
-            lastChapter = lastChapter,
+            prevChapter = prevChapter,
             nextChapter = nextChapter
         )
     }
 
     override val explorePageProvider: ExplorePageProvider = PotatoLibExplorePageProvider(ktorClient, ::getBookInformation)
-    override val searchProvider: SearchProvider = PotatoLibSearchProvider(ktorClient)
+    override val searchProvider: SearchProvider = PotatoLibSearchProvider(this, ktorClient)
 }

@@ -2,12 +2,15 @@ package io.nightfish.potatolib.source.explore
 
 import android.net.Uri
 import android.util.Log
+import com.github.michaelbull.result.Result
+import com.github.michaelbull.result.get
 import com.github.michaelbull.result.onErr
 import com.github.michaelbull.result.onOk
 import io.ktor.client.HttpClient
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.isSuccess
 import io.nightfish.lightnovelreader.api.book.BookInformation
+import io.nightfish.lightnovelreader.api.error.WebRequestError
 import io.nightfish.lightnovelreader.api.explore.ExploreBooksRow
 import io.nightfish.lightnovelreader.api.explore.ExploreDisplayBook
 import io.nightfish.lightnovelreader.api.web.explore.ExploreTapPageDataSource
@@ -23,7 +26,7 @@ import org.jsoup.nodes.TextNode
 
 class HomeTapPageDataSource(
     val ktorClient: HttpClient,
-    val getBookInformation: suspend (id: String) -> BookInformation
+    val getBookInformation: suspend (id: String) -> Result<BookInformation, WebRequestError>
 ): ExploreTapPageDataSource {
     override val title = "首页"
 
@@ -83,8 +86,8 @@ class HomeTapPageDataSource(
         val exploreDisplayBooks = doc.selectXpath("/html/body/main/div/div/div/section[1]/div/a")
             .mapNotNull { element ->
                 element.attr("href").replace("/book/", "")
-            }.map {
-                getBookInformation.invoke(it)
+            }.mapNotNull {
+                getBookInformation.invoke(it).get()
             }.map {
                 ExploreDisplayBook(
                     id = it.id,
